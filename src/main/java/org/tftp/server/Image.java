@@ -1,4 +1,4 @@
-package org.ftp.server;
+package org.tftp.server;
 
 public class Image {
     private int httpCode;

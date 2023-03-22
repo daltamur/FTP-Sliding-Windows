@@ -1,6 +1,6 @@
-package org.ftp.server;
+package org.tftp.server;
 
-import org.ftp.utilities.Constants;
+import org.tftp.utilities.Constants;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -22,7 +22,7 @@ public class Server implements Constants {
             while (!Thread.interrupted()) {
                 ByteBuffer receivedData = ByteBuffer.allocate(maxPacketSize);
                 System.out.println("Waiting for user...");
-                new Thread(new RequestHandler(serverChannel.receive(receivedData))).start();
+                new Thread(new RequestHandler(serverChannel.receive(receivedData), serverChannel)).start();
                 System.out.println("I got it");
             }
         }catch (IOException e){

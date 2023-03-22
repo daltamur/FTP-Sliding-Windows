@@ -1,4 +1,4 @@
-package org.ftp.server;
+package org.tftp.server;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -12,21 +12,24 @@ public class RequestHandler implements Runnable{
 
 
 
-    public RequestHandler(SocketAddress clientAddress) throws IOException {
+    public RequestHandler(SocketAddress clientAddress, DatagramChannel serverChannel) throws IOException {
         this.clientAddress = clientAddress;
         this.buffer = ByteBuffer.allocate(1024);
         this.channel = DatagramChannel.open().bind(null);
         this.channel.connect(this.clientAddress);
+        //server channel writes to the client with the server's randomized xor key and a string representing the new channel's socket address to send stuff to
     }
     @Override
     public void run() {
         buffer.put(new String("ready").getBytes());
+        System.out.println(clientAddress);
         try {
-            channel.write(buffer);
+            channel.send(buffer, clientAddress);
             buffer.flip();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        System.out.println("Sent ack to client");
         for(;;){
             try {
                 channel.receive(buffer);
