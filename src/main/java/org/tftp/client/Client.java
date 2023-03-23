@@ -1,9 +1,6 @@
 package org.tftp.client;
 
-import org.tftp.packets.DataPacket;
-import org.tftp.packets.ErrorPacket;
-import org.tftp.packets.OACKPacket;
-import org.tftp.packets.PacketFactory;
+import org.tftp.packets.*;
 import org.tftp.utilities.Constants;
 import org.tftp.utilities.ImageViewer;
 
