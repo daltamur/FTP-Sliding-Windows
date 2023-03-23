@@ -10,13 +10,18 @@ public class ImageGrabber {
     public static Image getImage(String fileURL) throws IOException {
         URL fileUrl = new URL(fileURL);
         HttpURLConnection httpConn = (HttpURLConnection) fileUrl.openConnection();
-        String fileName = "";
-        if(httpConn.getResponseCode() == HttpURLConnection.HTTP_OK){
-            if(httpConn.getHeaderField("Content-Disposition") == null){
-                fileName = fileURL.replace('/', '.');
+        try {
+            String fileName = "";
+            if (httpConn.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                if (httpConn.getHeaderField("Content-Disposition") == null) {
+                    fileName = fileURL.replace('/', '.');
+                }
+                return new Image(httpConn.getResponseCode(), httpConn.getInputStream().readAllBytes(), fileName);
+            } else {
+                return new Image(httpConn.getResponseCode(), null, null);
             }
+        }finally {
+            httpConn.disconnect();
         }
-        httpConn.disconnect();
-        return new Image(httpConn.getResponseCode(), httpConn.getInputStream().readAllBytes(), fileName);
     }
 }

@@ -13,7 +13,7 @@ public class OACKPacket extends Packet{
 
 
     public OACKPacket(ByteBuffer buffer){
-        int length = buffer.position();
+        int length = buffer.limit();
         int encryptionKeyValLength = new String("EncryptionKey").getBytes().length;
         byte[] longBytes = new byte[8];
         buffer.position(encryptionKeyValLength+4);

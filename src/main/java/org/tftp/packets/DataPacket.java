@@ -13,7 +13,7 @@ public class DataPacket extends Packet{
     private boolean isLastPacket;
     private byte[] data;
     public DataPacket(ByteBuffer buffer){
-        int totalLength = buffer.position();
+        int totalLength = buffer.limit();
         //fill up block number
         buffer.position(2);
         byte[] blockBytes = new byte[4];

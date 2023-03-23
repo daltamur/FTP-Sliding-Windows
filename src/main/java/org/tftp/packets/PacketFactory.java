@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 
 /*
 Returns byte buffers for the corresponding type of packet that is called
+all get functions also flip the buffer to get it ready for reading
  */
 public class PacketFactory {
 
@@ -16,6 +17,15 @@ public class PacketFactory {
         };
     }
 
+    public static int bytesToInt(byte[] intBuf){
+        return ByteBuffer.wrap(new byte[]{
+                0x00,
+                0x00,
+                intBuf[1],
+                intBuf[0]
+        }).getInt();
+    }
+
 
     public ByteBuffer makeAckPacket(int blockNumber){
         byte[] opcodeBytes = getIntBytes(4);
@@ -23,6 +33,7 @@ public class PacketFactory {
         ByteBuffer buffer = ByteBuffer.allocate(4);
         buffer.put(opcodeBytes);
         buffer.put(blockNumberBytes);
+        buffer.flip();
         return buffer;
     }
 
@@ -33,6 +44,7 @@ public class PacketFactory {
         buffer.put(opcodeBytes);
         buffer.put(blockNumberBytes);
         buffer.put(data);
+        buffer.flip();
         return buffer;
     }
 
@@ -45,6 +57,7 @@ public class PacketFactory {
         buffer.put(errorCodeBytes);
         buffer.put(errorMessageBytes);
         buffer.put((byte) 0);
+        buffer.flip();
         return buffer;
     }
 
@@ -56,12 +69,13 @@ public class PacketFactory {
         buffer.put("EncryptionKey".getBytes());
         buffer.put((byte) 0);
         buffer.putLong(encryptionKey);
+        buffer.flip();
         return buffer;
     }
 
 
     public ByteBuffer makeRRQPacket(String FileURL, long encryptionKey){
-        byte[] opcodeBytes = getIntBytes(6);
+        byte[] opcodeBytes = getIntBytes(1);
         ByteBuffer buffer = ByteBuffer.allocate(13+"EncryptionKey".getBytes().length+FileURL.getBytes().length);
         buffer.put(opcodeBytes);
         buffer.put((byte) 0);
@@ -70,6 +84,7 @@ public class PacketFactory {
         buffer.put("EncryptionKey".getBytes());
         buffer.put((byte) 0);
         buffer.putLong(encryptionKey);
+        buffer.flip();
         return buffer;
     }
 

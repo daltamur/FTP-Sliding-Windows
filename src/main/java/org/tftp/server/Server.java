@@ -10,20 +10,20 @@ import java.nio.channels.DatagramChannel;
 public class Server implements Constants {
     //this will act as the central host that clients will access to make requests
     public static void main(String[] args) throws IOException {
-        //arg[0] has the port
-        //arg[1] has the IP
+        //arg[0] has the IP
+        //arg[1] has the port
         //arg[2] will say 'drop' indicating to mimic 1% packet loss and 'no-drop' otherwise
-        int port = Integer.parseInt(args[0]);
-        String host = args[1];
+        int port = Integer.parseInt(args[1]);
+        String host = args[0];
         String packetLoss = args[2];
         DatagramChannel serverChannel = DatagramChannel.open().bind(new InetSocketAddress(host, port));
         serverChannel.configureBlocking(true);
         try {
             while (!Thread.interrupted()) {
-                ByteBuffer receivedData = ByteBuffer.allocate(maxPacketSize);
+
+                ByteBuffer receivedData = ByteBuffer.allocate(1024);
                 System.out.println("Waiting for user...");
-                new Thread(new RequestHandler(serverChannel.receive(receivedData), serverChannel)).start();
-                System.out.println("I got it");
+                new Thread(new RequestHandler(serverChannel.receive(receivedData), receivedData)).start();
             }
         }catch (IOException e){
             e.printStackTrace();

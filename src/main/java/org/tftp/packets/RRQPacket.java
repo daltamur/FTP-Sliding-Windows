@@ -13,7 +13,7 @@ public class RRQPacket extends Packet{
     private long encryptionKeyVal;
 
     public RRQPacket(ByteBuffer buffer){
-        int length = buffer.position();
+        int length = buffer.limit();
         //get file url
         int curPos = 3;
         Integer zero = 0;

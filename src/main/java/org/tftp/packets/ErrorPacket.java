@@ -11,7 +11,7 @@ public class ErrorPacket extends Packet{
 
     public ErrorPacket(ByteBuffer buffer){
         //omit the zero that gets written at the end
-        int totalLength = buffer.position()-1;
+        int totalLength = buffer.limit()-1;
         buffer.position(2);
         //get error code from buffer
         byte[] errCodeBytes = new byte[4];
