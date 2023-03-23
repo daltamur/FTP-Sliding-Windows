@@ -20,7 +20,6 @@ public class Server implements Constants {
         serverChannel.configureBlocking(true);
         try {
             while (!Thread.interrupted()) {
-
                 ByteBuffer receivedData = ByteBuffer.allocate(1024);
                 System.out.println("Waiting for user...");
                 new Thread(new RequestHandler(serverChannel.receive(receivedData), receivedData)).start();

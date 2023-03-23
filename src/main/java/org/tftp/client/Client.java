@@ -1,6 +1,5 @@
 package org.tftp.client;
 
-import com.oracle.coherence.common.base.Timeout;
 import org.tftp.packets.DataPacket;
 import org.tftp.packets.ErrorPacket;
 import org.tftp.packets.OACKPacket;
@@ -14,7 +13,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -22,6 +20,7 @@ import java.nio.channels.DatagramChannel;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Client implements Constants {
 
@@ -29,7 +28,10 @@ public class Client implements Constants {
     public static ConcurrentHashMap<Integer, byte[]> DataMap = new ConcurrentHashMap<>();
     public static AtomicBoolean lastPacketSent = new AtomicBoolean(false);
 
-    public static void main(String[] args) throws IOException{
+    public static AtomicInteger totalPackets = new AtomicInteger();
+    static ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+    public static void main(String[] args) throws IOException, InterruptedException, ExecutionException, TimeoutException {
         //arg[0] has ip of server
         //arg[1] has port of server
         //arg[2] has image URL
@@ -65,21 +67,30 @@ public class Client implements Constants {
         //ack back each packet
         //continue to do this until we get the last packet
         //all data will get stored in a concurrent hashmap such that block number -> packet data
-        client.socket().setSoTimeout(1000);
+
+        //our task we will time
+        Callable<Void> Callable = () -> {
+            ByteBuffer receivedData = ByteBuffer.allocate(1024);
+            try {
+                new Thread(new SlidingWindowReceiver(receivedData, client.receive(receivedData))).start();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return null;
+        };
+        executorService.submit(Callable);
         while(!lastPacketSent.get()){
-            //give the client a second to receive data
-            try (Timeout t = Timeout.after(1, TimeUnit.SECONDS)) {
-                ByteBuffer receivedData = ByteBuffer.allocate(1024);
-                try {
-                    new Thread(new SlidingWindowReceiver(receivedData, client.receive(receivedData))).start();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }catch (InterruptedException e) {
-                // thread timed out or was otherwise interrupted
-                if(lastPacketSent.get()) break;
+            //give the client a half second to receive data
+            Future<Void> task = executorService.submit(Callable);
+            try {
+                task.get(500, TimeUnit.MILLISECONDS);
+            }catch (Exception e){
+                // had a timeout, do nothing
             }
         }
+
+        //just spin until all the stuff comes in
+        while(DataMap.size() != totalPackets.get()){}
 
         //close connection to the server, we got all our data
         client.close();
@@ -100,19 +111,19 @@ public class Client implements Constants {
         BufferedImage image = ImageIO.read(is);
         new ImageViewer(image).showImage();
         //Thread terminates after this
+        System.exit(0);
     }
 }
 
 class SlidingWindowReceiver implements Runnable{
     ByteBuffer receivedData;
-    InetSocketAddress serverConnection;
-
     DatagramChannel connection = DatagramChannel.open().bind(null);
+    SocketAddress serverConnection;
 
 
     public SlidingWindowReceiver(ByteBuffer receivedData, SocketAddress serverConnection) throws IOException {
         this.receivedData = receivedData;
-        connection.connect(serverConnection);
+        this.serverConnection = serverConnection;
     }
 
     @Override
@@ -120,23 +131,25 @@ class SlidingWindowReceiver implements Runnable{
         //process the packet, send an ACK back if it is a data packet
         //if it is anything other than an error packet just throw it out
         if(PacketFactory.bytesToInt(new byte[]{receivedData.get(1), receivedData.get(0)}) == 3){
+            receivedData.flip();
             DataPacket packet = new DataPacket(receivedData);
             Client.DataMap.put(packet.getBlockNumber(), packet.getData());
+            System.out.println(packet.getBlockNumber());
             //send the ACK
             try {
-                connection.write(new PacketFactory().makeAckPacket(packet.getBlockNumber()));
+                connection.send(new PacketFactory().makeAckPacket(packet.getBlockNumber()), serverConnection);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
 
             //set the atomic boolean to true to indicate to the main client thread that we're done receiving
-            if(packet.isLastPacket()) Client.lastPacketSent.set(true);
+            if(packet.isLastPacket()) {
+                System.out.println("Is last packet");
+                Client.lastPacketSent.set(true);
+                Client.totalPackets.set(packet.getBlockNumber()+1);
+            }
         }
-        try {
-            connection.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+
         try {
             connection.disconnect();
         } catch (IOException e) {
