@@ -21,7 +21,6 @@ public class ImageViewer {
         ImageIcon icon = new ImageIcon(image);
         JLabel label = new JLabel(icon);
         JOptionPane.showMessageDialog(null, label);
-        System.out.println("Showed the image");
     }
 
     public static void main(String[] args) throws IOException {

@@ -1,14 +1,18 @@
 package org.tftp.server;
 
+import org.tftp.packets.DataPacket;
 import org.tftp.packets.PacketFactory;
 import org.tftp.packets.RRQPacket;
 
+import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.SocketAddress;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class RequestHandler implements Runnable{
@@ -27,6 +31,28 @@ public class RequestHandler implements Runnable{
         this.channel = DatagramChannel.open().bind(null);
         this.channel.connect(this.clientAddress);
         this.initiallyReceivedBuffer = receivedData;
+    }
+
+    public static ArrayList<ByteBuffer> getDataFrames(ByteBuffer imageData){
+        imageData.flip();
+        imageData.limit(imageData.capacity());
+        ArrayList<ByteBuffer> imageFrames = new ArrayList<>();
+        int i = 0;
+        byte[] frameBytes;
+        while(i < imageData.limit()){
+            if(imageData.limit()-i >= 512){
+                frameBytes = new byte[512];
+                imageData.get(frameBytes, 0, 512);
+                imageFrames.add(new PacketFactory().makeDataPacket(frameBytes, i));
+                i+=512;
+            }else{
+                frameBytes = new byte[imageData.limit()-i];
+                imageData.get(frameBytes, 0, frameBytes.length);
+                imageFrames.add(new PacketFactory().makeDataPacket(frameBytes, i));
+                i+=(imageData.limit() - i);
+            }
+        }
+        return imageFrames;
     }
     @Override
     public void run() {
@@ -70,7 +96,7 @@ public class RequestHandler implements Runnable{
         }
 
         //break the image data up into frames
-
+        ArrayList<ByteBuffer> frames = getDataFrames(ByteBuffer.wrap(foundImage.getImageData()));
 
         //send the frames
 
@@ -85,7 +111,12 @@ public class RequestHandler implements Runnable{
 
 //This class will be used to send data to the client
 class SlidingWindowSender implements Runnable {
+    private DataPacket dataToSend;
 
+
+    public SlidingWindowSender(DataPacket dataToSend){
+        this.dataToSend = dataToSend;
+    }
     @Override
     public void run() {
 
