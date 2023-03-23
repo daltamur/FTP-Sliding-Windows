@@ -165,6 +165,7 @@ public class RequestHandler implements Runnable {
 
 
         public SlidingWindowSender(ByteBuffer dataToSend, int blockNumber, SocketAddress clientAddress, ConcurrentHashMap<Integer, ACKPacket> ACKMap) throws IOException {
+            //xor encrypt data to send
             this.dataToSend = dataToSend;
             this.blockNumber = blockNumber;
             this.clientAddress = clientAddress;
@@ -206,6 +207,7 @@ public class RequestHandler implements Runnable {
 
             //if caught, put the ACK packet in the hashmap and exit gracefully
             //Make sure it was an ack packet that we caught
+            //xor decrypt ackBuffer somewhere right here
             if (PacketFactory.bytesToInt(new byte[]{ackBuffer.get(1), ackBuffer.get(0)}) != 4) return false;
             ackPacket = new ACKPacket(ackBuffer);
             if (ackPacket.getBlockNumber() != blockNumber) {

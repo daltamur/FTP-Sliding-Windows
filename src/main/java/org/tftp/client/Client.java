@@ -39,7 +39,7 @@ public class Client implements Constants {
         //client initiates connection with server
         DatagramChannel client = DatagramChannel.open().bind(null);
         InetSocketAddress serverAddr = new InetSocketAddress(args[0], Integer.parseInt(args[1]));
-        //we'll add encryption last...
+        long clientXORKey = ThreadLocalRandom.current().nextLong();
         ByteBuffer buffer = new PacketFactory().makeRRQPacket(args[2], ThreadLocalRandom.current().nextLong());
         client.send(buffer, serverAddr);
         System.out.println("RRQ Sent!");
@@ -130,6 +130,7 @@ class SlidingWindowReceiver implements Runnable{
 
 
     public SlidingWindowReceiver(ByteBuffer receivedData, SocketAddress serverConnection) throws IOException {
+        //xor decrypt receivedData right here
         this.receivedData = receivedData;
         this.serverConnection = serverConnection;
     }
@@ -144,6 +145,7 @@ class SlidingWindowReceiver implements Runnable{
             //send the ACK
             try {
                 ByteBuffer ACKPacket = new PacketFactory().makeAckPacket(packet.getBlockNumber());
+                //xor encrypt ack packet right here
                 connection.send(ACKPacket, serverConnection);
             } catch (IOException e) {
                 throw new RuntimeException(e);
