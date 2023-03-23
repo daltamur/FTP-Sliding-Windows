@@ -1,9 +1,8 @@
 package org.tftp.server;
 
-import org.tftp.packets.DataPacket;
-import org.tftp.packets.OACKPacket;
-import org.tftp.packets.PacketFactory;
-import org.tftp.packets.RRQPacket;
+import com.oracle.coherence.common.base.Timeout;
+import org.tftp.packets.*;
+import org.tftp.utilities.Constants;
 
 import javax.xml.crypto.Data;
 import java.io.IOException;
@@ -16,6 +15,7 @@ import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 public class RequestHandler implements Runnable{
     private final SocketAddress clientAddress;
@@ -23,6 +23,8 @@ public class RequestHandler implements Runnable{
 
     private final ByteBuffer initiallyReceivedBuffer;
     private ByteBuffer buffer;
+
+    private ConcurrentHashMap<Integer, ACKPacket> ACKMap = new ConcurrentHashMap<>();
 
 
 
@@ -101,9 +103,30 @@ public class RequestHandler implements Runnable{
         ArrayList<ByteBuffer> frames = getDataFrames(ByteBuffer.wrap(foundImage.getImageData()));
 
         //send the frames
-        for(ByteBuffer frame: frames){
+        int windowStartPos = 0;
+        int windowEndPos = 0;
+        while(windowEndPos < frames.size()-1){
+            if(ACKMap.size() < Constants.windowSize && windowEndPos <= Constants.windowSize-1){
+                try {
+                    new Thread(new SlidingWindowSender(frames.get(windowEndPos), windowEndPos, clientAddress, ACKMap)).start();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                windowEndPos++;
+            }else if (ACKMap.containsKey(windowStartPos)){
+                //slide the window by 1
+                windowStartPos++;
+                windowEndPos++;
+                try {
+                    new Thread(new SlidingWindowSender(frames.get(windowEndPos), windowEndPos, clientAddress, ACKMap)).start();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
 
+            }
         }
+
+        while(ACKMap.size() != frames.size()){//just spin until the ack map catches up with the frames}
 
 
 
@@ -116,13 +139,16 @@ public class RequestHandler implements Runnable{
 
 //This class will be used to send data to the client
 class SlidingWindowSender implements Runnable {
-    private DataPacket dataToSend;
+    private ByteBuffer dataToSend;
     private  int blockNumber;
-    private InetSocketAddress clientAddress;
-    private ConcurrentHashMap<Integer, OACKPacket> ACKMap;
+    private SocketAddress clientAddress;
+    private ConcurrentHashMap<Integer, ACKPacket> ACKMap;
+
+    private ByteBuffer ackBuffer = ByteBuffer.allocate(1024);
+    private DatagramChannel connection = DatagramChannel.open().bind(null);
 
 
-    public SlidingWindowSender(DataPacket dataToSend, int blockNumber, InetSocketAddress clientAddress, ConcurrentHashMap<Integer, OACKPacket>ACKMap){
+    public SlidingWindowSender(ByteBuffer dataToSend, int blockNumber, SocketAddress clientAddress, ConcurrentHashMap<Integer, ACKPacket>ACKMap) throws IOException {
         this.dataToSend = dataToSend;
         this.blockNumber = blockNumber;
         this.clientAddress = clientAddress;
@@ -131,6 +157,36 @@ class SlidingWindowSender implements Runnable {
     @Override
     public void run() {
         //Send a packet and keep trying to send it until you get an ACK back
+        boolean receivedACK = false;
+        while(!receivedACK) {
+            try {
+                connection.send(dataToSend, clientAddress);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            ACKPacket ackPacket;
+            try (Timeout t = Timeout.after(1, TimeUnit.SECONDS)) {
+                connection.receive(ackBuffer);
+            }catch (InterruptedException e){
+                continue;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            //if caught, put the ACK packet in the hashmap and exit gracefully
+            if(PacketFactory.bytesToInt(new byte[]{ackBuffer.get(1), ackBuffer.get(0)}) != 3) continue;
+            ackPacket = new ACKPacket(ackBuffer);
+            if(ackPacket.getBlockNumber() != blockNumber){
+                ACKMap.put(blockNumber, ackPacket);
+                continue;
+            }
+            ACKMap.put(blockNumber, ackPacket);
+            receivedACK = true;
+        }
+        try {
+            connection.disconnect();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
     }
 }
