@@ -31,7 +31,7 @@ public class Client implements Constants {
     public static AtomicInteger totalPackets = new AtomicInteger();
     static ExecutorService executorService = Executors.newSingleThreadExecutor();
 
-    public static void main(String[] args) throws IOException, InterruptedException, ExecutionException, TimeoutException {
+    public static void main(String[] args) throws IOException {
         //arg[0] has ip of server
         //arg[1] has port of server
         //arg[2] has image URL
@@ -51,16 +51,23 @@ public class Client implements Constants {
             System.out.println("Now connected to server instance!");
             if(PacketFactory.bytesToInt(new byte[]{buffer.get(1), buffer.get(0)}) == 6){
                 //we'll get our encryption key here.
+                buffer.flip();
                 encryptionKey = new OACKPacket(buffer).getEncryptionKey();
                 System.out.println(encryptionKey);
                 break;
             } else if (PacketFactory.bytesToInt(new byte[]{buffer.get(1), buffer.get(0)}) == 5) {
                 //there was an error, likely that the URL gave no image data
                 //handle error and close client connection
+                buffer.flip();
                 ErrorPacket packet = new ErrorPacket(buffer);
+                client.close();
                 System.out.println("ERROR CODE " + packet.getErrorCode() + ": " + packet.getErrorMessage());
+                System.exit(-1);
             }else{
+                buffer.flip();
+                client.close();
                 System.out.println("ERROR: Unknown Packet Opcode of " + PacketFactory.bytesToInt(new byte[]{buffer.get(1), buffer.get(0)}));
+                System.exit(-1);
             }
         }
         //initiate the sliding window protocol, start listening for server packets
@@ -86,6 +93,7 @@ public class Client implements Constants {
                 task.get(500, TimeUnit.MILLISECONDS);
             }catch (Exception e){
                 // had a timeout, do nothing
+                if(lastPacketSent.get()) break;
             }
         }
 
@@ -133,21 +141,20 @@ class SlidingWindowReceiver implements Runnable{
         if(PacketFactory.bytesToInt(new byte[]{receivedData.get(1), receivedData.get(0)}) == 3){
             receivedData.flip();
             DataPacket packet = new DataPacket(receivedData);
-            Client.DataMap.put(packet.getBlockNumber(), packet.getData());
-            System.out.println(packet.getBlockNumber());
             //send the ACK
             try {
-                connection.send(new PacketFactory().makeAckPacket(packet.getBlockNumber()), serverConnection);
+                ByteBuffer ACKPacket = new PacketFactory().makeAckPacket(packet.getBlockNumber());
+                connection.send(ACKPacket, serverConnection);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
 
             //set the atomic boolean to true to indicate to the main client thread that we're done receiving
             if(packet.isLastPacket()) {
-                System.out.println("Is last packet");
                 Client.lastPacketSent.set(true);
                 Client.totalPackets.set(packet.getBlockNumber()+1);
             }
+            Client.DataMap.put(packet.getBlockNumber(), packet.getData());
         }
 
         try {

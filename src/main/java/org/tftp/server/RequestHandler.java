@@ -6,6 +6,7 @@ import org.tftp.packets.RRQPacket;
 import org.tftp.utilities.Constants;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.HttpURLConnection;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -104,6 +105,7 @@ public class RequestHandler implements Runnable {
         //send the frames
         int windowStartPos = 0;
         int windowEndPos = 0;
+        long startTime = System.nanoTime();
         while (windowEndPos <= frames.size() - 1) {
             if (ACKMap.size() < Constants.windowSize && windowEndPos < Constants.windowSize - 1) {
                 try {
@@ -127,6 +129,19 @@ public class RequestHandler implements Runnable {
 
 
         while (ACKMap.size() != frames.size()) {}//just spin until the ack map catches up with the frames
+        //calculate throughput to get the most accurate reading possible
+        double timeInSecs = ((double) (System.nanoTime() - startTime))/1E9;
+        System.out.println("Total Time: " + timeInSecs);
+        //get the total size of the transmitted image packets
+        int totalSize = 0;
+        for(ByteBuffer frame: frames){
+            totalSize+=frame.limit();
+        }
+        //just print it to the screen I'll add the values to a graph
+        double throughput = ((totalSize * 8)/1E6)/timeInSecs;
+        System.out.println(totalSize + "B: " + throughput + " Mb/s");
+
+
         //disconnect
         System.out.println("Image transferred");
         try {
@@ -138,15 +153,15 @@ public class RequestHandler implements Runnable {
 
 
     //This class will be used to send data to the client
-    class SlidingWindowSender implements Runnable {
+    public class SlidingWindowSender implements Runnable {
         private ByteBuffer dataToSend;
         private int blockNumber;
         private SocketAddress clientAddress;
         private ConcurrentHashMap<Integer, ACKPacket> ACKMap;
         ExecutorService executorService = Executors.newSingleThreadExecutor();
-
-        private ByteBuffer ackBuffer = ByteBuffer.allocate(1024);
         private DatagramChannel connection = DatagramChannel.open().bind(null);
+
+        ByteBuffer ackBuffer = ByteBuffer.allocate(1024);
 
 
         public SlidingWindowSender(ByteBuffer dataToSend, int blockNumber, SocketAddress clientAddress, ConcurrentHashMap<Integer, ACKPacket> ACKMap) throws IOException {
@@ -156,13 +171,10 @@ public class RequestHandler implements Runnable {
             this.ACKMap = ACKMap;
         }
 
-        @Override
-        public void run() {
-            //Send a packet and keep trying to send it until you get an ACK back
-            boolean receivedACK = false;
+        public boolean SendAndReceiveAck(){
+
             //our task we will time
             Callable<Void> Callable = () -> {
-                ByteBuffer receivedData = ByteBuffer.allocate(1024);
                 try {
                     connection.receive(ackBuffer);
                 } catch (IOException e) {
@@ -170,41 +182,59 @@ public class RequestHandler implements Runnable {
                 }
                 return null;
             };
-            while (!receivedACK) {
+
+            try {
+                if(Server.drop && ThreadLocalRandom.current().nextInt(100) == 1){
+                    dataToSend.position(0);
+                    System.out.println("Dropping packet " + blockNumber);
+                }else connection.send(dataToSend, clientAddress);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            ACKPacket ackPacket;
+            //give the client a half second to receive data
+            Future<Void> task = executorService.submit(Callable);
+            try {
+                task.get(500, TimeUnit.MILLISECONDS);
+            }catch (TimeoutException | InterruptedException | ExecutionException e){
+                // had a timeout, do nothing
+                //System.out.println("No ACK received for "+blockNumber);
+                //reset the byte buffer to attempt to write the data again
+                dataToSend.position(0);
+                return false;
+            }
+
+            //if caught, put the ACK packet in the hashmap and exit gracefully
+            //Make sure it was an ack packet that we caught
+            if (PacketFactory.bytesToInt(new byte[]{ackBuffer.get(1), ackBuffer.get(0)}) != 4) return false;
+            ackPacket = new ACKPacket(ackBuffer);
+            if (ackPacket.getBlockNumber() != blockNumber) {
+                ACKMap.put(blockNumber, ackPacket);
+                return false;
+            }
+            ACKMap.put(blockNumber, ackPacket);
+            return true;
+        }
+
+        @Override
+        public void run() {
+            //Send a packet and keep trying to send it until you get an ACK back
+            boolean receivedACK = false;
+            while(!receivedACK){
+                receivedACK = SendAndReceiveAck();
                 try {
-                    int val = ThreadLocalRandom.current().nextInt(100);
-                    if(val != 99) {
-                        System.out.println("Sending block "+blockNumber);
-                        connection.send(dataToSend, clientAddress);
-                    }else{
-                        System.out.println("Dropping Packet " + blockNumber);
-                    }
+                    connection.close();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
-                ACKPacket ackPacket;
-                //give the client a half second to receive data
-                Future<Void> task = executorService.submit(Callable);
                 try {
-                    task.get(500, TimeUnit.MILLISECONDS);
-                }catch (Exception e){
-                    // had a timeout, do nothing
-                    System.out.println("No ACK received for "+blockNumber);
-                    continue;
+                    connection = DatagramChannel.open().bind(null);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
-                //if caught, put the ACK packet in the hashmap and exit gracefully
-                //Make sure it was an ack packet that we caught
-                if (PacketFactory.bytesToInt(new byte[]{ackBuffer.get(1), ackBuffer.get(0)}) != 4) continue;
-                ackPacket = new ACKPacket(ackBuffer);
-                if (ackPacket.getBlockNumber() != blockNumber) {
-                    ACKMap.put(blockNumber, ackPacket);
-                    continue;
-                }
-                ACKMap.put(blockNumber, ackPacket);
-                receivedACK = true;
             }
             try {
-                connection.disconnect();
+                connection.close();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

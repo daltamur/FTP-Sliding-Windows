@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 
 public class Server implements Constants {
+    public static boolean drop = false;
     //this will act as the central host that clients will access to make requests
     public static void main(String[] args) throws IOException {
         //arg[0] has the IP
@@ -16,6 +17,11 @@ public class Server implements Constants {
         int port = Integer.parseInt(args[1]);
         String host = args[0];
         String packetLoss = args[2];
+        if(packetLoss.equals("drop")){
+            drop = true;
+        }else{
+            drop = false;
+        }
         DatagramChannel serverChannel = DatagramChannel.open().bind(new InetSocketAddress(host, port));
         serverChannel.configureBlocking(true);
         try {

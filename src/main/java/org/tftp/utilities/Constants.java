@@ -2,5 +2,5 @@ package org.tftp.utilities;
 
 public interface Constants {
     Integer maxPacketSize = 512;
-    Integer windowSize = 6;
+    Integer windowSize = 128;
 }
