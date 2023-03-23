@@ -1,12 +1,14 @@
 package org.tftp.server;
 
 import org.tftp.packets.DataPacket;
+import org.tftp.packets.OACKPacket;
 import org.tftp.packets.PacketFactory;
 import org.tftp.packets.RRQPacket;
 
 import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
@@ -99,6 +101,9 @@ public class RequestHandler implements Runnable{
         ArrayList<ByteBuffer> frames = getDataFrames(ByteBuffer.wrap(foundImage.getImageData()));
 
         //send the frames
+        for(ByteBuffer frame: frames){
+
+        }
 
 
 
@@ -112,13 +117,20 @@ public class RequestHandler implements Runnable{
 //This class will be used to send data to the client
 class SlidingWindowSender implements Runnable {
     private DataPacket dataToSend;
+    private  int blockNumber;
+    private InetSocketAddress clientAddress;
+    private ConcurrentHashMap<Integer, OACKPacket> ACKMap;
 
 
-    public SlidingWindowSender(DataPacket dataToSend){
+    public SlidingWindowSender(DataPacket dataToSend, int blockNumber, InetSocketAddress clientAddress, ConcurrentHashMap<Integer, OACKPacket>ACKMap){
         this.dataToSend = dataToSend;
+        this.blockNumber = blockNumber;
+        this.clientAddress = clientAddress;
+        this.ACKMap = ACKMap;
     }
     @Override
     public void run() {
+        //Send a packet and keep trying to send it until you get an ACK back
 
     }
 }
