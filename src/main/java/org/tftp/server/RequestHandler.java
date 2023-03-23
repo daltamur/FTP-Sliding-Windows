@@ -34,7 +34,6 @@ public class RequestHandler implements Runnable{
             try {
                 channel.receive(buffer);
                 buffer.flip();
-                System.out.println(buffer.position());
                 byte bytes[] = new byte[buffer.limit()];
                 buffer.get(bytes, 0, buffer.limit());
                 System.out.println(Thread.currentThread().getId());

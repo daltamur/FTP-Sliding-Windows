@@ -11,6 +11,8 @@ public class Main {
     public static void main(String[] args) throws IOException {
         //test http download
         //we will get the file url from the client and make the file's name equal to the url
+        Integer x = 5;
+        System.out.println(x.byteValue());
         String fileURL = "https://thefader-res.cloudinary.com/private_images/w_640,c_limit,f_auto,q_auto:eco/18960007Final_xagiy6/phoebe-bridgers-cover-story-interview.jpg";
         URL fileUrl = new URL(fileURL);
         HttpURLConnection httpConn = (HttpURLConnection) fileUrl.openConnection();

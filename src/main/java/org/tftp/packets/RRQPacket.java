@@ -13,12 +13,36 @@ public class RRQPacket extends Packet{
     private long encryptionKeyVal;
 
     public RRQPacket(ByteBuffer buffer){
-
+        int length = buffer.position();
+        //get file url
+        int curPos = 3;
+        Integer zero = 0;
+        int encryptionKeyLength = "EncryptionKey".getBytes().length;
+        while(buffer.get(curPos) != zero.byteValue()){
+            curPos++;
+        }
+        buffer.position(3);
+        byte[] fileBytes = new byte[curPos - 3];
+        buffer.get(fileBytes, 0, fileBytes.length);
+        fileURL = new String(fileBytes);
+        buffer.position(buffer.position()+encryptionKeyLength+2);
+        //get encryption key
+        byte[] keyBytes = new byte[length - fileBytes.length - encryptionKeyLength - 5];
+        buffer.get(keyBytes, 0, keyBytes.length);
+        encryptionKeyVal = ByteBuffer.wrap(keyBytes).getLong();
     }
 
     @Override
     public byte[] getByteArray() {
         return new byte[0];
+    }
+
+    public String getFileURL() {
+        return fileURL;
+    }
+
+    public long getEncryptionKeyVal() {
+        return encryptionKeyVal;
     }
 
     @Override
