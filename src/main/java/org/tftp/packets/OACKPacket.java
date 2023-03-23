@@ -9,13 +9,14 @@ import java.nio.ByteBuffer;
 6|0|<EncryptionKey>|0|<Some Random Long>
  */
 public class OACKPacket extends Packet{
-    public long encryptionKey;
+    private long encryptionKey;
 
 
     public OACKPacket(ByteBuffer buffer){
         int length = buffer.position();
         int encryptionKeyValLength = new String("EncryptionKey").getBytes().length;
         byte[] longBytes = new byte[8];
+        buffer.position(encryptionKeyValLength+4);
         buffer.get(longBytes, 0, 8);
         encryptionKey = ByteBuffer.wrap(longBytes).getLong();
     }
