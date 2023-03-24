@@ -90,12 +90,22 @@ public class Client implements Constants {
                 task.get(500, TimeUnit.MILLISECONDS);
             }catch (Exception e){
                 // had a timeout, do nothing
-                if(lastPacketSent.get()) break;
+                if(lastPacketSent.get() && DataMap.size() == totalPackets.get()) break;
             }
         }
 
-        //just spin until all the stuff comes in
-        while(DataMap.size() != totalPackets.get()){}
+        //loop again to get the rest of the packets even if the last packet was sent
+        int totalPacket = totalPackets.get();
+        while(DataMap.size() != totalPacket){
+            //give the client a half second to receive data
+            Future<Void> task = executorService.submit(Callable);
+            try {
+                task.get(500, TimeUnit.MILLISECONDS);
+            }catch (Exception e){
+                // had a timeout, do nothing
+                if(DataMap.size() == totalPacket) break;
+            }
+        }
 
         //close connection to the server, we got all our data
         client.close();
@@ -147,6 +157,7 @@ class SlidingWindowReceiver implements Runnable{
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+//            System.out.println(packet.getBlockNumber());
 
             //set the atomic boolean to true to indicate to the main client thread that we're done receiving
             if(packet.isLastPacket()) {

@@ -185,8 +185,8 @@ public class RequestHandler implements Runnable {
             };
 
             try {
-                if(Server.drop && ThreadLocalRandom.current().nextInt(100) == 1){
-                    dataToSend.position(0);
+                if(Server.drop && ThreadLocalRandom.current().nextInt(100) < 50){
+                    dataToSend.rewind();
                     System.out.println("Dropping packet " + blockNumber);
                 }else connection.send(dataToSend, clientAddress);
             } catch (IOException e) {
@@ -201,7 +201,6 @@ public class RequestHandler implements Runnable {
                 // had a timeout, do nothing
                 //System.out.println("No ACK received for "+blockNumber);
                 //reset the byte buffer to attempt to write the data again
-                dataToSend.position(0);
                 return false;
             }
 
@@ -224,15 +223,17 @@ public class RequestHandler implements Runnable {
             boolean receivedACK = false;
             while(!receivedACK){
                 receivedACK = SendAndReceiveAck();
-                try {
-                    connection.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                try {
-                    connection = DatagramChannel.open().bind(null);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                if(!receivedACK){
+                    try {
+                        connection.close();
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    try {
+                        connection = DatagramChannel.open().bind(null);
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
                 }
             }
             try {
