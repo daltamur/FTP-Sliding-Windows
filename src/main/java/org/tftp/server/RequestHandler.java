@@ -185,9 +185,9 @@ public class RequestHandler implements Runnable {
             };
 
             try {
-                if(Server.drop && ThreadLocalRandom.current().nextInt(100) < 50){
+                if(Server.drop && ThreadLocalRandom.current().nextInt(100) == 1){
                     dataToSend.rewind();
-                    System.out.println("Dropping packet " + blockNumber);
+                    //System.out.println("Dropping packet " + blockNumber);
                 }else connection.send(dataToSend, clientAddress);
             } catch (IOException e) {
                 throw new RuntimeException(e);

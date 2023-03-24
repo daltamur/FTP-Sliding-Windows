@@ -157,7 +157,8 @@ class SlidingWindowReceiver implements Runnable{
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-//            System.out.println(packet.getBlockNumber());
+            //just a print statement for myself to monitor the packets that were caught
+            //System.out.println(packet.getBlockNumber());
 
             //set the atomic boolean to true to indicate to the main client thread that we're done receiving
             if(packet.isLastPacket()) {
