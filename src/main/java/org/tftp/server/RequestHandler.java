@@ -6,7 +6,6 @@ import org.tftp.packets.RRQPacket;
 import org.tftp.utilities.Constants;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.net.HttpURLConnection;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -19,15 +18,14 @@ public class RequestHandler implements Runnable {
     private final DatagramChannel channel;
 
     private final ByteBuffer initiallyReceivedBuffer;
-    private ByteBuffer buffer;
 
-    private ConcurrentHashMap<Integer, ACKPacket> ACKMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, ACKPacket> ACKMap = new ConcurrentHashMap<>();
 
 
     public RequestHandler(SocketAddress clientAddress, ByteBuffer receivedData) throws IOException {
         receivedData.flip();
         this.clientAddress = clientAddress;
-        this.buffer = ByteBuffer.allocate(1024);
+        ByteBuffer buffer = ByteBuffer.allocate(1024);
         this.channel = DatagramChannel.open().bind(null);
         this.channel.connect(this.clientAddress);
         this.initiallyReceivedBuffer = receivedData;
@@ -154,10 +152,10 @@ public class RequestHandler implements Runnable {
 
     //This class will be used to send data to the client
     public class SlidingWindowSender implements Runnable {
-        private ByteBuffer dataToSend;
-        private int blockNumber;
-        private SocketAddress clientAddress;
-        private ConcurrentHashMap<Integer, ACKPacket> ACKMap;
+        private final ByteBuffer dataToSend;
+        private final int blockNumber;
+        private final SocketAddress clientAddress;
+        private final ConcurrentHashMap<Integer, ACKPacket> ACKMap;
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         private DatagramChannel connection = DatagramChannel.open().bind(null);
 
@@ -187,7 +185,7 @@ public class RequestHandler implements Runnable {
             try {
                 if(Server.drop && ThreadLocalRandom.current().nextInt(100) == 1){
                     dataToSend.rewind();
-                    //System.out.println("Dropping packet " + blockNumber);
+                    System.out.println("Dropping packet " + blockNumber);
                 }else connection.send(dataToSend, clientAddress);
             } catch (IOException e) {
                 throw new RuntimeException(e);

@@ -149,6 +149,7 @@ class SlidingWindowReceiver implements Runnable{
         if(PacketFactory.bytesToInt(new byte[]{receivedData.get(1), receivedData.get(0)}) == 3){
             receivedData.flip();
             DataPacket packet = new DataPacket(receivedData);
+            // System.out.println(packet.getBlockNumber());
             //send the ACK
             try {
                 ByteBuffer ACKPacket = new PacketFactory().makeAckPacket(packet.getBlockNumber());

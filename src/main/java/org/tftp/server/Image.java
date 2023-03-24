@@ -1,9 +1,9 @@
 package org.tftp.server;
 
 public class Image {
-    private int httpCode;
-    private byte[] imageData;
-    private String imageName;
+    private final int httpCode;
+    private final byte[] imageData;
+    private final String imageName;
 
     public Image(int httpCode, byte[] imageData, String imageName){
         this.httpCode = httpCode;

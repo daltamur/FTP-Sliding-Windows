@@ -8,10 +8,10 @@ import java.nio.ByteBuffer;
 03|<Block#>|<Data>
  */
 public class DataPacket extends Packet{
-    private int blockNumber;
+    private final int blockNumber;
 
-    private boolean isLastPacket;
-    private byte[] data;
+    private final boolean isLastPacket;
+    private final byte[] data;
     public DataPacket(ByteBuffer buffer){
         int totalLength = buffer.limit();
         //fill up block number
@@ -42,8 +42,4 @@ public class DataPacket extends Packet{
         return blockNumber;
     }
 
-    @Override
-    public byte[] getByteArray() {
-        return new byte[0];
-    }
 }

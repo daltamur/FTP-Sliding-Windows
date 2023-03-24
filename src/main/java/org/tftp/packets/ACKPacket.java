@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 04|<BlockNumber>
  */
 public class ACKPacket extends Packet{
-    private Integer blockNumber;
+    private final Integer blockNumber;
 
     public ACKPacket(ByteBuffer buffer){
         //fill up block number
@@ -26,8 +26,4 @@ public class ACKPacket extends Packet{
         return blockNumber;
     }
 
-    @Override
-    public byte[] getByteArray() {
-        return new byte[0];
-    }
 }

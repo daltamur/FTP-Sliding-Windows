@@ -9,8 +9,8 @@ ________________________________________________________________________________
 1|0|FileURL|0|EncryptionKey|0|<Some Random Long>
  */
 public class RRQPacket extends Packet{
-    private String fileURL;
-    private long encryptionKeyVal;
+    private final String fileURL;
+    private final long encryptionKeyVal;
 
     public RRQPacket(ByteBuffer buffer){
         int length = buffer.limit();
@@ -30,11 +30,6 @@ public class RRQPacket extends Packet{
         byte[] keyBytes = new byte[length - fileBytes.length - encryptionKeyLength - 5];
         buffer.get(keyBytes, 0, keyBytes.length);
         encryptionKeyVal = ByteBuffer.wrap(keyBytes).getLong();
-    }
-
-    @Override
-    public byte[] getByteArray() {
-        return new byte[0];
     }
 
     public String getFileURL() {

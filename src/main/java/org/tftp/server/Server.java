@@ -17,11 +17,7 @@ public class Server implements Constants {
         int port = Integer.parseInt(args[1]);
         String host = args[0];
         String packetLoss = args[2];
-        if(packetLoss.equals("drop")){
-            drop = true;
-        }else{
-            drop = false;
-        }
+        drop = packetLoss.equals("drop");
         DatagramChannel serverChannel = DatagramChannel.open().bind(new InetSocketAddress(host, port));
         serverChannel.configureBlocking(true);
         try {

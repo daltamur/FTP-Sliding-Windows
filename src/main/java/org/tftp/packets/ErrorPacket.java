@@ -6,8 +6,8 @@ import java.nio.ByteBuffer;
 05|<Error Code>|<Error Message>|0
  */
 public class ErrorPacket extends Packet{
-    private int errorCode;
-    private String errorMessage;
+    private final int errorCode;
+    private final String errorMessage;
 
     public ErrorPacket(ByteBuffer buffer){
         //omit the zero that gets written at the end
@@ -35,8 +35,4 @@ public class ErrorPacket extends Packet{
         return errorMessage;
     }
 
-    @Override
-    public byte[] getByteArray() {
-        return new byte[0];
-    }
 }
