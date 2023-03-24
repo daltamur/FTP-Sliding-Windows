@@ -10,7 +10,7 @@ To run, ensure you have Maven installed
 
 After each interaction with a client, the server prints out the throughput of the transfer to the console.
 
-- Run the client with `mvn exec:java -Dexec.mainClass="org.tftp.client.Client" -Dexec.args="<1> <2> <3>"
+- Run the client with `mvn exec:java -Dexec.mainClass="org.tftp.client.Client" -Dexec.args="<1> <2> <3>"`
 <1> = The IP address the server is on
 <2> = The port the server is on
 <3> = URL of an image you wish to view
