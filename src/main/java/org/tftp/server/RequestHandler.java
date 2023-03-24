@@ -4,6 +4,7 @@ import org.tftp.packets.ACKPacket;
 import org.tftp.packets.PacketFactory;
 import org.tftp.packets.RRQPacket;
 import org.tftp.utilities.Constants;
+import org.tftp.utilities.XOREncryption;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -25,7 +26,6 @@ public class RequestHandler implements Runnable {
     public RequestHandler(SocketAddress clientAddress, ByteBuffer receivedData) throws IOException {
         receivedData.flip();
         this.clientAddress = clientAddress;
-        ByteBuffer buffer = ByteBuffer.allocate(1024);
         this.channel = DatagramChannel.open().bind(null);
         this.channel.connect(this.clientAddress);
         this.initiallyReceivedBuffer = receivedData;
@@ -91,8 +91,11 @@ public class RequestHandler implements Runnable {
         }
 
         //tell user we found the image and can initiate the transfer
+        long clientEncryptionKey = receivedPacket.getEncryptionKeyVal();
+        long serverEncryptionKey = ThreadLocalRandom.current().nextLong();
+        long encryptionKey = XOREncryption.generateKey(clientEncryptionKey, serverEncryptionKey);
         try {
-            channel.write(new PacketFactory().makeOACKPacket(ThreadLocalRandom.current().nextLong()));
+            channel.write(new PacketFactory().makeOACKPacket(serverEncryptionKey));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -107,7 +110,7 @@ public class RequestHandler implements Runnable {
         while (windowEndPos <= frames.size() - 1) {
             if (ACKMap.size() < Constants.windowSize && windowEndPos < Constants.windowSize - 1) {
                 try {
-                    new Thread(new SlidingWindowSender(frames.get(windowEndPos), windowEndPos, clientAddress, ACKMap)).start();
+                    new Thread(new SlidingWindowSender(frames.get(windowEndPos), windowEndPos, clientAddress, ACKMap, encryptionKey)).start();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -116,7 +119,7 @@ public class RequestHandler implements Runnable {
                 //slide the window by 1
                 windowStartPos++;
                 try {
-                    new Thread(new SlidingWindowSender(frames.get(windowEndPos), windowEndPos, clientAddress, ACKMap)).start();
+                    new Thread(new SlidingWindowSender(frames.get(windowEndPos), windowEndPos, clientAddress, ACKMap, encryptionKey)).start();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -159,15 +162,20 @@ public class RequestHandler implements Runnable {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         private DatagramChannel connection = DatagramChannel.open().bind(null);
 
+        private long encryptionKey;
+
         ByteBuffer ackBuffer = ByteBuffer.allocate(1024);
 
 
-        public SlidingWindowSender(ByteBuffer dataToSend, int blockNumber, SocketAddress clientAddress, ConcurrentHashMap<Integer, ACKPacket> ACKMap) throws IOException {
+        public SlidingWindowSender(ByteBuffer dataToSend, int blockNumber, SocketAddress clientAddress, ConcurrentHashMap<Integer, ACKPacket> ACKMap, long encryptionKey) throws IOException {
             //xor encrypt data to send
             this.dataToSend = dataToSend;
             this.blockNumber = blockNumber;
             this.clientAddress = clientAddress;
             this.ACKMap = ACKMap;
+            this.encryptionKey = encryptionKey;
+            //encrypt the data to send
+            XOREncryption.XORBuffer(this.dataToSend, this.encryptionKey);
         }
 
         public boolean SendAndReceiveAck(){
@@ -205,6 +213,9 @@ public class RequestHandler implements Runnable {
             //if caught, put the ACK packet in the hashmap and exit gracefully
             //Make sure it was an ack packet that we caught
             //xor decrypt ackBuffer somewhere right here
+            //flip the ackBuffer to prepare reading
+            ackBuffer.flip();
+            XOREncryption.XORBuffer(ackBuffer, encryptionKey);
             if (PacketFactory.bytesToInt(new byte[]{ackBuffer.get(1), ackBuffer.get(0)}) != 4) return false;
             ackPacket = new ACKPacket(ackBuffer);
             if (ackPacket.getBlockNumber() != blockNumber) {

@@ -3,6 +3,7 @@ package org.tftp.client;
 import org.tftp.packets.*;
 import org.tftp.utilities.Constants;
 import org.tftp.utilities.ImageViewer;
+import org.tftp.utilities.XOREncryption;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -28,6 +29,8 @@ public class Client implements Constants {
     public static AtomicInteger totalPackets = new AtomicInteger();
     static ExecutorService executorService = Executors.newSingleThreadExecutor();
 
+    public static long XORKey;
+
     public static void main(String[] args) throws IOException {
         //arg[0] has ip of server
         //arg[1] has port of server
@@ -36,21 +39,22 @@ public class Client implements Constants {
         //client initiates connection with server
         DatagramChannel client = DatagramChannel.open().bind(null);
         InetSocketAddress serverAddr = new InetSocketAddress(args[0], Integer.parseInt(args[1]));
-        long clientXORKey = ThreadLocalRandom.current().nextLong();
-        ByteBuffer buffer = new PacketFactory().makeRRQPacket(args[2], ThreadLocalRandom.current().nextLong());
+        long clientEncryptionKey = ThreadLocalRandom.current().nextLong();
+        ByteBuffer buffer = new PacketFactory().makeRRQPacket(args[2], clientEncryptionKey);
         client.send(buffer, serverAddr);
         System.out.println("RRQ Sent!");
         buffer = ByteBuffer.allocate(1024);
         //client will ack back, connect to the socket address of the ack, as this is going to be the thread the client communicates with
-        long encryptionKey;
+        long serverEncryptionKey;
         for(;;) {
             client.receive(buffer);
             System.out.println("Now connected to server instance!");
             if(PacketFactory.bytesToInt(new byte[]{buffer.get(1), buffer.get(0)}) == 6){
                 //we'll get our encryption key here.
                 buffer.flip();
-                encryptionKey = new OACKPacket(buffer).getEncryptionKey();
-                System.out.println(encryptionKey);
+                serverEncryptionKey = new OACKPacket(buffer).getEncryptionKey();
+                //System.out.println(serverEncryptionKey);
+                XORKey = XOREncryption.generateKey(clientEncryptionKey, serverEncryptionKey);
                 break;
             } else if (PacketFactory.bytesToInt(new byte[]{buffer.get(1), buffer.get(0)}) == 5) {
                 //there was an error, likely that the URL gave no image data
@@ -137,9 +141,12 @@ class SlidingWindowReceiver implements Runnable{
 
 
     public SlidingWindowReceiver(ByteBuffer receivedData, SocketAddress serverConnection) throws IOException {
-        //xor decrypt receivedData right here
         this.receivedData = receivedData;
         this.serverConnection = serverConnection;
+        //XOR decrypt receivedData
+        //need to flip the buffer to prepare for reading now
+        this.receivedData.flip();
+        XOREncryption.XORBuffer(this.receivedData, Client.XORKey);
     }
 
     @Override
@@ -147,13 +154,12 @@ class SlidingWindowReceiver implements Runnable{
         //process the packet, send an ACK back if it is a data packet
         //if it is anything other than an error packet just throw it out
         if(PacketFactory.bytesToInt(new byte[]{receivedData.get(1), receivedData.get(0)}) == 3){
-            receivedData.flip();
             DataPacket packet = new DataPacket(receivedData);
-            // System.out.println(packet.getBlockNumber());
             //send the ACK
             try {
                 ByteBuffer ACKPacket = new PacketFactory().makeAckPacket(packet.getBlockNumber());
                 //xor encrypt ack packet right here
+                XOREncryption.XORBuffer(ACKPacket, Client.XORKey);
                 connection.send(ACKPacket, serverConnection);
             } catch (IOException e) {
                 throw new RuntimeException(e);
