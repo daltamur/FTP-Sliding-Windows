@@ -173,8 +173,7 @@ class SlidingWindowReceiver implements Runnable{
                 Client.totalPackets.set(packet.getBlockNumber()+1);
             }
 
-            //only add to the datamap if we haven't already gotten the value and this is just a retransmission
-            if(!Client.DataMap.containsKey(packet.getBlockNumber())) Client.DataMap.put(packet.getBlockNumber(), packet.getData());
+            Client.DataMap.put(packet.getBlockNumber(), packet.getData());
         }
 
         try {

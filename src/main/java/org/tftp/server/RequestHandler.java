@@ -108,7 +108,7 @@ public class RequestHandler implements Runnable {
         int windowEndPos = 0;
         long startTime = System.nanoTime();
         while (windowEndPos <= frames.size() - 1) {
-            if (ACKMap.size() < Constants.windowSize && windowEndPos < Constants.windowSize - 1) {
+            if (ACKMap.size() < Constants.windowSize && windowEndPos < Constants.windowSize) {
                 try {
                     new Thread(new SlidingWindowSender(frames.get(windowEndPos), windowEndPos, clientAddress, ACKMap, encryptionKey)).start();
                 } catch (IOException e) {
@@ -206,6 +206,7 @@ public class RequestHandler implements Runnable {
                 // had a timeout, do nothing
                 //System.out.println("No ACK received for "+blockNumber);
                 //reset the byte buffer to attempt to write the data again
+                dataToSend.rewind();
                 return false;
             }
 
@@ -249,7 +250,6 @@ public class RequestHandler implements Runnable {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-
         }
     }
 }
