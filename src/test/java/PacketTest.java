@@ -5,7 +5,7 @@ import org.tftp.packets.*;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class PacketTests {
+public class PacketTest {
     @Test
     public void ACKPacketTest(){
         ByteBuffer buffer = new PacketFactory().makeAckPacket(10);
@@ -50,7 +50,4 @@ public class PacketTests {
         Assert.assertEquals("https://i.ytimg.com/vi/9sfYpolGCu8/maxresdefault.jpg", packet.getFileURL());
         Assert.assertEquals(testLong, packet.getEncryptionKeyVal());
     }
-
-
-
 }

@@ -129,7 +129,7 @@ public class RequestHandler implements Runnable {
         }
 
 
-        while (ACKMap.size() != frames.size()) {}//just spin until the ack map catches up with the frames
+        while (ACKMap.size() != frames.size()); //just spin until the ack map catches up with the frames
         //calculate throughput to get the most accurate reading possible
         double timeInSecs = ((double) (System.nanoTime() - startTime))/1E9;
         System.out.println("Total Time: " + timeInSecs);
@@ -193,7 +193,6 @@ public class RequestHandler implements Runnable {
             try {
                 if(Server.drop && ThreadLocalRandom.current().nextInt(100) == 1){
                     dataToSend.rewind();
-                    System.out.println("Dropping packet " + blockNumber);
                 }else connection.send(dataToSend, clientAddress);
             } catch (IOException e) {
                 throw new RuntimeException(e);
