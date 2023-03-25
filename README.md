@@ -1,5 +1,5 @@
-# FTP-Sliding-Windows
-An FTP Implementation using Sliding Window Packet Transmission
+# TFTP-Sliding-Windows
+A TFTP Implementation using Sliding Window Packet Transmission
 
 To run, ensure you have Maven installed
 
