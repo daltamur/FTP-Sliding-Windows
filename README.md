@@ -1,9 +1,10 @@
 # TFTP-Sliding-Windows
 A TFTP Implementation using Sliding Window Packet Transmission
 
-To run, ensure you have Maven installed
+To run, ensure you have Maven and Java version >= 11 installed
 
-- First run the server with `mvn exec:java -Dexec.mainClass="org.tftp.server.Server" -Dexec.args="<1> <2> <3>"`
+- First run the server with 
+<br />`mvn exec:java -Dexec.mainClass="org.tftp.server.Server" -Dexec.args="<1> <2> <3>"`
 
 | Key           | Value                                                                                    |
 | ------------- |:----------------------------------------------------------------------------------------:|
@@ -13,7 +14,8 @@ To run, ensure you have Maven installed
 
 After each interaction with a client, the server prints out the throughput of the transfer to the console.
 
-- Run the client with `mvn exec:java -Dexec.mainClass="org.tftp.client.Client" -Dexec.args="<1> <2> <3>"`
+- Run the client with
+<br />`mvn exec:java -Dexec.mainClass="org.tftp.client.Client" -Dexec.args="<1> <2> <3>"`
 
 | Key           | Value         |
 | ------------- |:-------------:|
