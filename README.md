@@ -17,11 +17,11 @@ After each interaction with a client, the server prints out the throughput of th
 - Run the client with
 <br />`mvn exec:java -Dexec.mainClass="org.tftp.client.Client" -Dexec.args="<1> <2> <3>"`
 
-| Key           | Value         |
-| ------------- |:-------------:|
-| <1>           | The IP address the server is on |
-| <2>           | The port the server is on     |
-| <3>           | URL of an image you wish to view      |
+| Key           |                Value                |
+| ------------- |:-----------------------------------:|
+| <1>           |   The IP address the server is on   |
+| <2>           |      The port the server is on      |
+| <3>           |  URL of an image you wish to view   |
 
 The client will display the image the URL points to in a separate window upon successful transmission. The server caches previously
 requested images so repeat requests of the same URL are inherently faster than a request of a brand new URL. 
