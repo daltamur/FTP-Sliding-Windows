@@ -175,6 +175,8 @@ public class RequestHandler implements Runnable {
             this.ACKMap = ACKMap;
             this.encryptionKey = encryptionKey;
             //encrypt the data to send
+            System.out.println(connection.getRemoteAddress());
+            System.out.println(connection.getLocalAddress());
             XOREncryption.XORBuffer(this.dataToSend, this.encryptionKey);
         }
 
